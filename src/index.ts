@@ -109,7 +109,6 @@ export default {
 					} else if (!faviconUrl.startsWith('http')) {
 						faviconUrl = `https://${domain}/${faviconUrl}`;
 					}
-
 					// Try fetching this favicon
 					const faviconResponse = await fetch(faviconUrl);
 					if (faviconResponse.ok) {
