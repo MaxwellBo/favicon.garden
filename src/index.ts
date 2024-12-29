@@ -12,30 +12,29 @@
  */
 
 interface Env {
-  FAVICON_GARDEN_BUCKET: R2Bucket;
+	FAVICON_GARDEN_BUCKET: R2Bucket;
 }
 
-type FaviconResponse = Response | null;
 
 const CACHE_POLICY = 'public, max-age=604800, stale-while-revalidate=86400';
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-    const path = url.pathname;
-    const domain = path.slice(1); // Remove leading slash
-    const cache = caches.default;
+	async fetch(request: Request, env: Env): Promise<Response> {
+		const url = new URL(request.url);
+		const path = url.pathname;
+		const domain = path.slice(1); // Remove leading slash
+		const cache = caches.default;
 
-    // Try cache
-    const cachedResponse = await cache.match(request);
-    if (cachedResponse) {
-      return cachedResponse;
-    }
+		// Try cache
+		const cachedResponse = await cache.match(request);
+		if (cachedResponse) {
+			return cachedResponse;
+		}
 
 		const object = await env.FAVICON_GARDEN_BUCKET.get(`favicons/${domain}`);
-		
+
 		if (object) {
-			const headers: HeadersInit = { 
+			const headers: HeadersInit = {
 				'Access-Control-Allow-Origin': '*',
 				'Cache-Control': CACHE_POLICY
 			};
@@ -49,48 +48,60 @@ export default {
 		}
 
 		// Try origin
-		const favicon = await this.fetchFavicon(domain);
-		
-		if (favicon) {
-			await env.FAVICON_GARDEN_BUCKET.put(`favicons/${domain}`, favicon.body);
+		let favicon: Response;
 
-			const headers: HeadersInit = {
-				'Cache-Control': CACHE_POLICY,
-				'Access-Control-Allow-Origin': '*'
-			}
-			if (favicon.headers.get('Content-Type')) {
-				headers['Content-Type'] = favicon.headers.get('Content-Type') as string;
-			}
-
-			const response = new Response(favicon.body, { headers });
-			await cache.put(request, response.clone());
-			return response;
+		try {
+			favicon = await this.fetchFavicon(domain);
+		} catch (e) {
+			return new Response('Favicon not found', { status: 500 });
 		}
 
-		return new Response('Favicon not found', { status: 404 });
-  },
+		await env.FAVICON_GARDEN_BUCKET.put(`favicons/${domain}`, favicon.body);
 
-	async fetchFavicon(domain: string): Promise<FaviconResponse> {
+		const headers: HeadersInit = {
+			'Cache-Control': CACHE_POLICY,
+			'Access-Control-Allow-Origin': '*'
+		}
+		if (favicon.headers.get('Content-Type')) {
+			headers['Content-Type'] = favicon.headers.get('Content-Type') as string;
+		}
+
+		const response = new Response(favicon.body, { headers });
+		await cache.put(request, response.clone());
+		return response;
+	},
+
+	async fetchFavicon(domain: string): Promise<Response> {
 		const response = await fetch(`https://${domain}`);
+		if (!response.ok) {
+			throw new Error('Failed to fetch domain');
+		}
+
 		const text = await response.text();
 
-		// Try all favicon-related link tags
-		const linkRegexes = [
-			/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*>/i,
-			/<link[^>]*rel=["']apple-touch-icon["'][^>]*>/i,
-			/<link[^>]*rel=["']apple-touch-icon-precomposed["'][^>]*>/i,
-			/<link[^>]*rel=["']fluid-icon["'][^>]*>/i,
-			/<link[^>]*rel=["']mask-icon["'][^>]*>/i
+		// Create a DOM parser and parse the HTML
+		const parser = new DOMParser();
+		const doc = parser.parseFromString(text, 'text/html');
+
+		// Define the rel attributes we want to look for, in order of preference
+		const relSelectors = [
+			'link[rel="icon"]',
+			'link[rel="shortcut icon"]',
+			'link[rel="apple-touch-icon"]',
+			'link[rel="apple-touch-icon-precomposed"]',
+			'link[rel="fluid-icon"]',
+			'link[rel="mask-icon"]'
 		];
 
-		for (const regex of linkRegexes) {
-			const match = text.match(regex);
-			if (match) {
-				const hrefMatch = match[0].match(/href=["']([^"']+)["']/i);
-				if (hrefMatch) {
-					let faviconUrl = hrefMatch[1];
-					
-					// Normalize URL
+		// Try each selector
+		for (const selector of relSelectors) {
+			const linkElement = doc.querySelector(selector);
+			if (linkElement && linkElement.getAttribute('href')) {
+				let faviconUrl = linkElement.getAttribute('href')!;
+
+				// Normalize URL
+				try {
+					// Try to construct a full URL using the base domain
 					if (faviconUrl.startsWith('//')) {
 						faviconUrl = 'https:' + faviconUrl;
 					} else if (faviconUrl.startsWith('/')) {
@@ -100,19 +111,18 @@ export default {
 					}
 
 					// Try fetching this favicon
-					try {
-						const faviconResponse = await fetch(faviconUrl);
-						if (faviconResponse.ok) {
-							return faviconResponse;
-						}
-					} catch (e) {
-						// Continue to next possibility
-						continue;
+					const faviconResponse = await fetch(faviconUrl);
+					if (faviconResponse.ok) {
+						return faviconResponse;
 					}
+				} catch (e) {
+					// Continue to next possibility
+					continue;
 				}
 			}
 		}
 
-		return null;
+		// If we've tried all options including the default /favicon.ico and nothing worked
+		throw new Error('No favicon found');
 	}
 }
