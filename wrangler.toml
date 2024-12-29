@@ -105,7 +105,7 @@ enabled = true
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#r2-buckets
 [[r2_buckets]]
 binding = "FAVICON_GARDEN_BUCKET"
-bucket_name = "favicon-garden"
+bucket_name = "favicon-garden-enam"
 
 # Bind another Worker service. Use this binding to call another Worker without network overhead.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
