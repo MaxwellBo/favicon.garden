@@ -56,7 +56,20 @@ export default {
       return new Response('Favicon not found: ' + e.message, { status: 404 });
     }
 
-    await env.FAVICON_GARDEN_BUCKET.put(`favicons/${domain}`, favicon.body);
+
+    // https://community.cloudflare.com/t/storing-r2-object-throws-an-error-for-some-readable-streams/387487/2
+    let body;
+    if (favicon.headers.get('content-length') == null) {
+        body = await favicon.text()
+    } else {
+        body = favicon.body
+    }
+
+    await env.FAVICON_GARDEN_BUCKET.put(`favicons/${domain}`, favicon.body, {
+      httpMetadata: {
+        contentType: favicon.headers.get('Content-Type') as string
+      }
+    });
 
     const headers: HeadersInit = {
       'Cache-Control': CACHE_POLICY,
