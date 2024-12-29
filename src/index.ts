@@ -22,11 +22,10 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     const domain = path.slice(1); // Remove leading slash
-    const cacheKey = new Request(request.url);
     const cache = caches.default;
 
     // Try cache first
-    const cachedResponse = await cache.match(cacheKey);
+    const cachedResponse = await cache.match(request);
     if (cachedResponse) {
       return cachedResponse;
     }
@@ -40,11 +39,12 @@ export default {
           headers: {
             'Content-Type': 'image/x-icon',
             'Cache-Control': 'public, max-age=86400',
+						'Expires': new Date(Date.now() + 86400 * 1000).toUTCString(),
             'Access-Control-Allow-Origin': '*'
           }
         });
         
-        await cache.put(cacheKey, response.clone());
+        await cache.put(request, response.clone());
         return response;
       }
 
@@ -59,11 +59,12 @@ export default {
           headers: {
             'Content-Type': 'image/x-icon',
             'Cache-Control': 'public, max-age=86400',
+						'Expires': new Date(Date.now() + 86400 * 1000).toUTCString(),
             'Access-Control-Allow-Origin': '*'
           }
         });
         
-        await cache.put(cacheKey, response.clone());
+        await cache.put(request, response.clone());
         return response;
       }
 
@@ -78,35 +79,57 @@ export default {
     }
   },
 
-  async fetchFavicon(domain: string): Promise<FaviconResponse> {
-    try {
-      const response = await fetch(`https://${domain}`);
-      if (!response.ok) return null;
+	async fetchFavicon(domain: string): Promise<FaviconResponse> {
+		try {
+			const response = await fetch(`https://${domain}`);
+			
+			if (response.ok) {
+				const text = await response.text();
 
-      const text = await response.text();
-      const match = text.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*>/i);
-      if (!match) return null;
-
-      const hrefMatch = match[0].match(/href=["']([^"']+)["']/i);
-      if (!hrefMatch) return null;
-
-      let faviconUrl = hrefMatch[1];
-      if (faviconUrl.startsWith('//')) {
-        faviconUrl = 'https:' + faviconUrl;
-      } else if (faviconUrl.startsWith('/')) {
-        faviconUrl = `https://${domain}${faviconUrl}`;
-      } else if (!faviconUrl.startsWith('http')) {
-        faviconUrl = `https://${domain}/${faviconUrl}`;
-      }
-
-      const faviconResponse = await fetch(faviconUrl);
-      if (faviconResponse.ok) {
-        return faviconResponse;
-      }
-    } catch (e) {
-      return null;
-    }
-
-    return null;
-  }
+				// Try all favicon-related link tags
+				const linkRegexes = [
+					/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*>/i,
+					/<link[^>]*rel=["']apple-touch-icon["'][^>]*>/i,
+					/<link[^>]*rel=["']apple-touch-icon-precomposed["'][^>]*>/i,
+					/<link[^>]*rel=["']fluid-icon["'][^>]*>/i,
+					/<link[^>]*rel=["']mask-icon["'][^>]*>/i
+				];
+	
+				for (const regex of linkRegexes) {
+					const match = text.match(regex);
+					if (match) {
+						const hrefMatch = match[0].match(/href=["']([^"']+)["']/i);
+						if (hrefMatch) {
+							let faviconUrl = hrefMatch[1];
+							
+							// Normalize URL
+							if (faviconUrl.startsWith('//')) {
+								faviconUrl = 'https:' + faviconUrl;
+							} else if (faviconUrl.startsWith('/')) {
+								faviconUrl = `https://${domain}${faviconUrl}`;
+							} else if (!faviconUrl.startsWith('http')) {
+								faviconUrl = `https://${domain}/${faviconUrl}`;
+							}
+	
+							// Try fetching this favicon
+							try {
+								const faviconResponse = await fetch(faviconUrl);
+								if (faviconResponse.ok) {
+									return faviconResponse;
+								}
+							} catch (e) {
+								// Continue to next possibility
+								continue;
+							}
+						}
+					}
+				}
+			}
+		} catch (e) {
+			// Main try failed
+		}
+	
+		// If all attempts fail, return null
+		return null;
+	}
 };
