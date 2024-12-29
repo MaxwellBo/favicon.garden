@@ -52,8 +52,8 @@ export default {
 
     try {
       favicon = await this.fetchFavicon(domain);
-    } catch (e) {
-      return new Response('Favicon not found', { status: 500 });
+    } catch (e: any) {
+      return new Response('Favicon not found: ' + e.message, { status: 404 });
     }
 
     await env.FAVICON_GARDEN_BUCKET.put(`favicons/${domain}`, favicon.body);
@@ -79,29 +79,24 @@ export default {
 
     const text = await response.text();
 
-    // Create a DOM parser and parse the HTML
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(text, 'text/html');
-
-    // Define the rel attributes we want to look for, in order of preference
-    const relSelectors = [
-      'link[rel="icon"]',
-      'link[rel="shortcut icon"]',
-      'link[rel="apple-touch-icon"]',
-      'link[rel="apple-touch-icon-precomposed"]',
-      'link[rel="fluid-icon"]',
-      'link[rel="mask-icon"]'
+    // Define regex patterns for different link types in order of preference
+    const patterns = [
+      /<link[^>]*rel=["'](?:icon|shortcut icon)["'][^>]*href=["']([^"']+)["'][^>]*>/i,
+      /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:icon|shortcut icon)["'][^>]*>/i,
+      /<link[^>]*rel=["']apple-touch-icon(?:-precomposed)?["'][^>]*href=["']([^"']+)["'][^>]*>/i,
+      /<link[^>]*href=["']([^"']+)["'][^>]*rel=["']apple-touch-icon(?:-precomposed)?["'][^>]*>/i,
+      /<link[^>]*rel=["'](?:fluid-icon|mask-icon)["'][^>]*href=["']([^"']+)["'][^>]*>/i,
+      /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:fluid-icon|mask-icon)["'][^>]*>/i
     ];
 
-    // Try each selector
-    for (const selector of relSelectors) {
-      const linkElement = doc.querySelector(selector);
-      if (linkElement && linkElement.getAttribute('href')) {
-        let faviconUrl = linkElement.getAttribute('href')!;
+    // Try each pattern
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        let faviconUrl = match[1];
 
         // Normalize URL
         try {
-          // Try to construct a full URL using the base domain
           if (faviconUrl.startsWith('//')) {
             faviconUrl = 'https:' + faviconUrl;
           } else if (faviconUrl.startsWith('/')) {
@@ -109,6 +104,7 @@ export default {
           } else if (!faviconUrl.startsWith('http')) {
             faviconUrl = `https://${domain}/${faviconUrl}`;
           }
+
           // Try fetching this favicon
           const faviconResponse = await fetch(faviconUrl);
           if (faviconResponse.ok) {
@@ -121,7 +117,16 @@ export default {
       }
     }
 
-    // If we've tried all options including the default /favicon.ico and nothing worked
-    throw new Error('No favicon found');
+    // Try the default favicon.ico as a last resort
+    try {
+      const defaultFaviconResponse = await fetch(`https://${domain}/favicon.ico`);
+      if (defaultFaviconResponse.ok) {
+        return defaultFaviconResponse;
+      }
+    } catch (e) {
+      // Ignore error and continue to throw
+    }
+
+    throw new Error('Exhausted');
   }
 }
