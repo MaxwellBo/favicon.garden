@@ -1,5 +1,5 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "r2-worker"
+name = "favicon-garden"
 main = "src/index.ts"
 compatibility_date = "2024-12-24"
 compatibility_flags = ["nodejs_compat"]
@@ -97,9 +97,9 @@ enabled = true
 
 # Bind an R2 Bucket. Use R2 to store arbitrarily large blobs of data, such as files.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#r2-buckets
-# [[r2_buckets]]
-# binding = "MY_BUCKET"
-# bucket_name = "my-bucket"
+[[r2_buckets]]
+binding = "FAVICON_GARDEN_BUCKET"
+bucket_name = "favicon-garden"
 
 # Bind another Worker service. Use this binding to call another Worker without network overhead.
 # Docs: https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
