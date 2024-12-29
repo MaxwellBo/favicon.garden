@@ -6,6 +6,10 @@ compatibility_flags = ["nodejs_compat"]
 
 assets = { directory = "./public/" }
 
+routes = [
+  { pattern = "favicon.garden", custom_domain = true }
+]
+
 # Workers Logs
 # Docs: https://developers.cloudflare.com/workers/observability/logs/workers-logs/
 # Configuration: https://developers.cloudflare.com/workers/observability/logs/workers-logs/#enable-workers-logs
