@@ -54,8 +54,9 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
     let target = normalizeUrl(path.slice(1)); // Remove leading slash
+    const bucketPath = `favicons/${encodeURIComponent(target)}`
 
-    const object = await env.FAVICON_GARDEN_BUCKET.get(`favicons/${target}`);
+    const object = await env.FAVICON_GARDEN_BUCKET.get(bucketPath);
 
     if (object) {
       const headers: HeadersInit = {
@@ -88,7 +89,7 @@ export default {
       return new Response('Request to favicon had no body', { status: 500 });
     }
 
-    await env.FAVICON_GARDEN_BUCKET.put(`favicons/${target}`, body, {
+    await env.FAVICON_GARDEN_BUCKET.put(bucketPath, body, {
       httpMetadata: {
         contentType: favicon.headers.get('Content-Type') as string
       }
