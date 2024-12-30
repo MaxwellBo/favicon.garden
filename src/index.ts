@@ -18,6 +18,16 @@ interface Env {
 
 const CACHE_POLICY = 'public, max-age=604800, stale-while-revalidate=86400';
 
+const PATTERNS = [
+  /<link[^>]*rel=["']apple-touch-icon(?:-precomposed)?["'][^>]*href=["']([^"']+)["'][^>]*>/i,
+  /<link[^>]*href=["']([^"']+)["'][^>]*rel=["']apple-touch-icon(?:-precomposed)?["'][^>]*>/i,
+  /<link[^>]*rel=["'](?:icon|shortcut icon)["'][^>]*href=["']([^"']+)["'][^>]*>/i,
+  /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:icon|shortcut icon)["'][^>]*>/i,
+  /<link[^>]*rel=["'](?:fluid-icon|mask-icon)["'][^>]*href=["']([^"']+)["'][^>]*>/i,
+  /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:fluid-icon|mask-icon)["'][^>]*>/i
+];
+
+
 function normalizeUrl(url: string): string {
   try {
     new URL(url);
@@ -70,13 +80,12 @@ export default {
       return new Response('Favicon did not download: ' + e.message + "\n" + e.stack, { status: 500 });
     }
 
-
     // have to .text() out the body because we can't stream if we don't have content-length
     // https://community.cloudflare.com/t/storing-r2-object-throws-an-error-for-some-readable-streams/387487/2
-    const body = await request.text();
+    const body = await favicon.text();
 
     if (!body) {
-      return new Response('no favicon body', { status: 500 });
+      return new Response('Request to favicon had no body', { status: 500 });
     }
 
     await env.FAVICON_GARDEN_BUCKET.put(`favicons/${target}`, body, {
@@ -99,25 +108,25 @@ export default {
   },
 
   async fetchFavicon(target: string): Promise<Response> {
+    const faviconUrl = new URL('/favicon.ico', target).href;
+    const faviconResponse = await fetch(faviconUrl);
+    if (faviconResponse.ok) {
+      return faviconResponse;
+    } else {
+      console.error(`Failed to fetch favicon.ico from ${target}: ${faviconResponse.status} ${faviconResponse.statusText}`);
+    }
+
     const response = await fetch(target);
     if (!response.ok) {
-      throw new Error(`Failed to fetch target: ${response.status} ${response.statusText}`);
+      throw new Error(`Failed to fetch HTML page ${target}: ${response.status} ${response.statusText}`);
     }
 
     const text = await response.text();
 
     // Define regex patterns for different link types in order of preference
-    const patterns = [
-      /<link[^>]*rel=["'](?:icon|shortcut icon)["'][^>]*href=["']([^"']+)["'][^>]*>/i,
-      /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:icon|shortcut icon)["'][^>]*>/i,
-      /<link[^>]*rel=["']apple-touch-icon(?:-precomposed)?["'][^>]*href=["']([^"']+)["'][^>]*>/i,
-      /<link[^>]*href=["']([^"']+)["'][^>]*rel=["']apple-touch-icon(?:-precomposed)?["'][^>]*>/i,
-      /<link[^>]*rel=["'](?:fluid-icon|mask-icon)["'][^>]*href=["']([^"']+)["'][^>]*>/i,
-      /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:fluid-icon|mask-icon)["'][^>]*>/i
-    ];
 
     // Try each pattern
-    for (const pattern of patterns) {
+    for (const pattern of PATTERNS) {
       const match = text.match(pattern);
       if (match && match[1]) {
         let faviconUrl = match[1];
@@ -131,18 +140,16 @@ export default {
             faviconUrl = new URL(faviconUrl, target).href;
           }
 
-          // Try fetching this favicon
           const faviconResponse = await fetch(faviconUrl);
           if (faviconResponse.ok) {
             return faviconResponse;
           }
         } catch (e) {
-          // Continue to next possibility
           continue;
         }
       }
     }
 
-    throw new Error('Exhausted all Regex patterns to find favicon');
+    throw new Error('Exhausted all Regex patterns and common paths to find favicon');
   }
 }
