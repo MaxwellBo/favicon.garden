@@ -22,7 +22,7 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
-    const domain = path.slice(1); // Remove leading slash
+    const target = path.slice(1); // Remove leading slash
     const cache = caches.default;
 
     // Try cache
@@ -31,7 +31,7 @@ export default {
       return cachedResponse;
     }
 
-    const object = await env.FAVICON_GARDEN_BUCKET.get(`favicons/${domain}`);
+    const object = await env.FAVICON_GARDEN_BUCKET.get(`favicons/${target}`);
 
     if (object) {
       const headers: HeadersInit = {
@@ -51,9 +51,9 @@ export default {
     let favicon: Response;
 
     try {
-      favicon = await this.fetchFavicon(domain);
+      favicon = await this.fetchFavicon(target);
     } catch (e: any) {
-      return new Response('Favicon did not download: ' + e.message, { status: 500 });
+      return new Response('Favicon did not download: ' + e.message + " full trace: " + e.stack, { status: 500 });
     }
 
 
@@ -69,7 +69,7 @@ export default {
       return new Response('no favicon body', { status: 500 });
     }
 
-    await env.FAVICON_GARDEN_BUCKET.put(`favicons/${domain}`, favicon.body, {
+    await env.FAVICON_GARDEN_BUCKET.put(`favicons/${target}`, favicon.body, {
       httpMetadata: {
         contentType: favicon.headers.get('Content-Type') as string
       }
@@ -88,10 +88,10 @@ export default {
     return response;
   },
 
-  async fetchFavicon(domain: string): Promise<Response> {
-    const response = await fetch(`https://${domain}`);
+  async fetchFavicon(target: string): Promise<Response> {
+    const response = await fetch(target);
     if (!response.ok) {
-      throw new Error('Failed to fetch domain');
+      throw new Error('Failed to fetch target');
     }
 
     const text = await response.text();
@@ -114,12 +114,11 @@ export default {
 
         // Normalize URL
         try {
-          if (faviconUrl.startsWith('//')) {
-            faviconUrl = 'https:' + faviconUrl;
-          } else if (faviconUrl.startsWith('/')) {
-            faviconUrl = `https://${domain}${faviconUrl}`;
-          } else if (!faviconUrl.startsWith('http')) {
-            faviconUrl = `https://${domain}/${faviconUrl}`;
+          // figure out whether the the favicon URL is relative or absolute
+          const url = new URL(faviconUrl);
+          if (!url.host) {
+            // If relative, construct full URL
+            faviconUrl = new URL(faviconUrl, target).href;
           }
 
           // Try fetching this favicon
@@ -132,16 +131,6 @@ export default {
           continue;
         }
       }
-    }
-
-    // Try the default favicon.ico as a last resort
-    try {
-      const defaultFaviconResponse = await fetch(`https://${domain}/favicon.ico`);
-      if (defaultFaviconResponse.ok) {
-        return defaultFaviconResponse;
-      }
-    } catch (e) {
-      // Ignore error and continue to throw
     }
 
     throw new Error('Exhausted');
