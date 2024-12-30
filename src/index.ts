@@ -15,6 +15,7 @@ interface Env {
   FAVICON_GARDEN_BUCKET: R2Bucket;
 }
 
+const BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36';
 
 const CACHE_POLICY = 'public, max-age=604800, stale-while-revalidate=86400';
 
@@ -81,9 +82,6 @@ export default {
       return new Response('Favicon did not download: ' + e.message + "\n" + e.stack, { status: 500 });
     }
 
-    // have to .text() out the body because we can't stream if we don't have content-length
-    // https://community.cloudflare.com/t/storing-r2-object-throws-an-error-for-some-readable-streams/387487/2
-
     if (!favicon.body) {
       return new Response('Request to favicon had no body', { status: 500 });
     }
@@ -115,14 +113,22 @@ export default {
 
   async fetchFavicon(target: string): Promise<Response> {
     const faviconUrl = new URL('/favicon.ico', target).href;
-    const faviconResponse = await fetch(faviconUrl);
+    const faviconResponse = await fetch(faviconUrl, {
+      headers: {
+        'User-Agent': BROWSER_USER_AGENT
+      }
+    });
     if (faviconResponse.ok) {
       return faviconResponse;
     } else {
       console.error(`Failed to fetch favicon.ico from ${target}: ${faviconResponse.status} ${faviconResponse.statusText}`);
     }
 
-    const response = await fetch(target);
+    const response = await fetch(target, {
+      headers: {
+        'User-Agent': BROWSER_USER_AGENT
+      }
+    });
     if (!response.ok) {
       throw new Error(`Failed to fetch HTML page ${target}: ${response.status} ${response.statusText}`);
     }
@@ -146,7 +152,11 @@ export default {
             faviconUrl = new URL(faviconUrl, target).href;
           }
 
-          const faviconResponse = await fetch(faviconUrl);
+          const faviconResponse = await fetch(faviconUrl, {
+            headers: {
+              'User-Agent': BROWSER_USER_AGENT
+            }
+          });
           if (faviconResponse.ok) {
             return faviconResponse;
           }
