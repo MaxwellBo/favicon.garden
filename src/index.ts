@@ -18,18 +18,32 @@ interface Env {
 
 const CACHE_POLICY = 'public, max-age=604800, stale-while-revalidate=86400';
 
+function normalizeUrl(url: string): string {
+  try {
+    new URL(url);
+    return url; // URL is already valid
+  } catch {
+    // If URL construction fails, try prepending https://
+    try {
+      return new URL(`https://${url}`).toString();
+    } catch {
+      throw new Error('Invalid URL even with https:// prefix');
+    }
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-    const path = url.pathname;
-    const target = path.slice(1); // Remove leading slash
     const cache = caches.default;
 
-    // Try cache
     const cachedResponse = await cache.match(request);
     if (cachedResponse) {
       return cachedResponse;
     }
+
+    const url = new URL(request.url);
+    const path = url.pathname;
+    let target = normalizeUrl(path.slice(1)); // Remove leading slash
 
     const object = await env.FAVICON_GARDEN_BUCKET.get(`favicons/${target}`);
 
@@ -53,23 +67,19 @@ export default {
     try {
       favicon = await this.fetchFavicon(target);
     } catch (e: any) {
-      return new Response('Favicon did not download: ' + e.message + " full trace: " + e.stack, { status: 500 });
+      return new Response('Favicon did not download: ' + e.message + "\n" + e.stack, { status: 500 });
     }
 
 
+    // have to .text() out the body because we can't stream if we don't have content-length
     // https://community.cloudflare.com/t/storing-r2-object-throws-an-error-for-some-readable-streams/387487/2
-    let body: ReadableStream | string | null;
-    if (favicon.headers.get('content-length') == null) {
-        body = await favicon.text()
-    } else {
-        body = favicon.body
-    }
+    const body = await request.text();
 
     if (!body) {
       return new Response('no favicon body', { status: 500 });
     }
 
-    await env.FAVICON_GARDEN_BUCKET.put(`favicons/${target}`, favicon.body, {
+    await env.FAVICON_GARDEN_BUCKET.put(`favicons/${target}`, body, {
       httpMetadata: {
         contentType: favicon.headers.get('Content-Type') as string
       }
@@ -91,7 +101,7 @@ export default {
   async fetchFavicon(target: string): Promise<Response> {
     const response = await fetch(target);
     if (!response.ok) {
-      throw new Error('Failed to fetch target');
+      throw new Error(`Failed to fetch target: ${response.status} ${response.statusText}`);
     }
 
     const text = await response.text();
@@ -133,6 +143,6 @@ export default {
       }
     }
 
-    throw new Error('Exhausted');
+    throw new Error('Exhausted all Regex patterns to find favicon');
   }
 }
