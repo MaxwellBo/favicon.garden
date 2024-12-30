@@ -53,16 +53,20 @@ export default {
     try {
       favicon = await this.fetchFavicon(domain);
     } catch (e: any) {
-      return new Response('Favicon not found: ' + e.message, { status: 404 });
+      return new Response('Favicon did not download: ' + e.message, { status: 500 });
     }
 
 
     // https://community.cloudflare.com/t/storing-r2-object-throws-an-error-for-some-readable-streams/387487/2
-    let body;
+    let body: ReadableStream | string | null;
     if (favicon.headers.get('content-length') == null) {
         body = await favicon.text()
     } else {
         body = favicon.body
+    }
+
+    if (!body) {
+      return new Response('no favicon body', { status: 500 });
     }
 
     await env.FAVICON_GARDEN_BUCKET.put(`favicons/${domain}`, favicon.body, {
@@ -79,7 +83,7 @@ export default {
       headers['Content-Type'] = favicon.headers.get('Content-Type') as string;
     }
 
-    const response = new Response(favicon.body, { headers });
+    const response = new Response(body, { headers });
     await cache.put(request, response.clone());
     return response;
   },
