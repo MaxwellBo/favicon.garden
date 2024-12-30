@@ -83,17 +83,22 @@ export default {
 
     // have to .text() out the body because we can't stream if we don't have content-length
     // https://community.cloudflare.com/t/storing-r2-object-throws-an-error-for-some-readable-streams/387487/2
-    const body = await favicon.text();
 
-    if (!body) {
+    if (!favicon.body) {
       return new Response('Request to favicon had no body', { status: 500 });
     }
 
-    await env.FAVICON_GARDEN_BUCKET.put(bucketPath, body, {
-      httpMetadata: {
-        contentType: favicon.headers.get('Content-Type') as string
-      }
-    });
+    const [body1, body2] = favicon.body.tee();
+
+    try {
+      await env.FAVICON_GARDEN_BUCKET.put(bucketPath, body1, {
+        httpMetadata: {
+          contentType: favicon.headers.get('Content-Type') as string
+        }
+      });
+    } catch (e: any) {
+      console.error('Failed to store favicon in bucket: ' + e.message + "\n" + e.stack);
+    }
 
     const headers: HeadersInit = {
       'Cache-Control': CACHE_POLICY,
@@ -103,7 +108,7 @@ export default {
       headers['Content-Type'] = favicon.headers.get('Content-Type') as string;
     }
 
-    const response = new Response(body, { headers });
+    const response = new Response(body2, { headers });
     await cache.put(request, response.clone());
     return response;
   },
