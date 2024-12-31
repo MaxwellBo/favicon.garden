@@ -115,7 +115,7 @@ export default {
     const faviconUrl = new URL('/favicon.ico', target).href;
     const faviconResponse = await fetch(faviconUrl, {
       headers: {
-        'User-Agent': BROWSER_USER_AGENT
+        'User-Agent': BROWSER_USER_AGENT,
       }
     });
     if (faviconResponse.ok) {
