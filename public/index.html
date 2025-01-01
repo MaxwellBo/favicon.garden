@@ -192,6 +192,19 @@
         Cloudflare Workers</a>.
     </p>
 
+
+    <h2>Wait, can't I just append <code>/favicon.ico</code> to the domain I want the favicon of?</h2>
+
+    <p>
+      Yes, but not all websites have a <code>/favicon.ico</code>, rather using <code>&lt;link rel="icon" href="..."&gt;</code> in their HTML.
+      favicon.garden saves you the busy work of confirming the presence of a <code>/favicon.ico</code>, and if not, tracking down the <code>&lt;link&gt;</code> tag.
+    </p>
+
+    <p>
+      Secondly, if you want to load lots of favicons, you're going to be issuing a lot of requests to a lot of different domains, with their associated connection initiation overhead.
+      favicon.garden centralizes all of this to a single domain.
+    </p>
+
     <h2>Tester</h2>
 
     <form id="faviconForm">
