@@ -20,10 +20,10 @@ const BROWSER_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKi
 const CACHE_POLICY = 'public, max-age=604800, stale-while-revalidate=86400';
 
 const PATTERNS = [
-  /<link[^>]*rel=["']apple-touch-icon(?:-precomposed)?["'][^>]*href=["']([^"']+)["'][^>]*>/i,
-  /<link[^>]*href=["']([^"']+)["'][^>]*rel=["']apple-touch-icon(?:-precomposed)?["'][^>]*>/i,
   /<link[^>]*rel=["'](?:icon|shortcut icon)["'][^>]*href=["']([^"']+)["'][^>]*>/i,
   /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:icon|shortcut icon)["'][^>]*>/i,
+  /<link[^>]*rel=["']apple-touch-icon(?:-precomposed)?["'][^>]*href=["']([^"']+)["'][^>]*>/i,
+  /<link[^>]*href=["']([^"']+)["'][^>]*rel=["']apple-touch-icon(?:-precomposed)?["'][^>]*>/i,
   /<link[^>]*rel=["'](?:fluid-icon|mask-icon)["'][^>]*href=["']([^"']+)["'][^>]*>/i,
   /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:fluid-icon|mask-icon)["'][^>]*>/i
 ];
@@ -41,6 +41,11 @@ function normalizeUrl(url: string): string {
       throw new Error('Invalid URL even with https:// prefix');
     }
   }
+}
+
+function isIcon(response: Response): boolean {
+  const contentType = response.headers.get('Content-Type');
+  return contentType !== null && (contentType.includes('image') || contentType.includes('icon'));
 }
 
 export default {
@@ -119,7 +124,11 @@ export default {
       }
     });
     if (faviconResponse.ok) {
-      return faviconResponse;
+      if (isIcon(faviconResponse)) {
+        return faviconResponse;
+      } else {
+        console.error(`Favicon.ico from ${target} is not an icon`);
+      }
     } else {
       console.error(`Failed to fetch favicon.ico from ${target}: ${faviconResponse.status} ${faviconResponse.statusText}`);
     }
@@ -142,25 +151,32 @@ export default {
       const match = text.match(pattern);
       if (match && match[1]) {
         let faviconUrl = match[1];
-
+    
         // Normalize URL
         try {
-          // figure out whether the the favicon URL is relative or absolute
-          const url = new URL(faviconUrl);
-          if (!url.host) {
-            // If relative, construct full URL
+          // First try to construct the full URL assuming it's relative
+          try {
             faviconUrl = new URL(faviconUrl, target).href;
+          } catch {
+            // If that fails, try parsing it as an absolute URL
+            faviconUrl = new URL(faviconUrl).href;
           }
-
+    
           const faviconResponse = await fetch(faviconUrl, {
             headers: {
               'User-Agent': BROWSER_USER_AGENT
             }
           });
+
           if (faviconResponse.ok) {
-            return faviconResponse;
+            if (isIcon(faviconResponse)) {
+              return faviconResponse;
+            } else {
+              throw new Error(`Favicon from ${faviconUrl} is not an icon`);
+            }
           }
-        } catch (e) {
+        } catch (e: any) {
+          console.log('Failed to fetch favicon from ' + faviconUrl + ': ' + e.message);
           continue;
         }
       }
