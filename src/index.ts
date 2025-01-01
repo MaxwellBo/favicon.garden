@@ -91,10 +91,10 @@ export default {
       return new Response('Request to favicon had no body', { status: 500 });
     }
 
-    if (!isIcon(favicon)) {
-      return new Response('Favicon is not an icon', { status: 500 });
+    if (!favicon.headers.get('Content-Type')) {
+      return new Response('Request to favicon had no Content-Type header', { status: 500 });
     }
-
+    
     const [body1, body2] = favicon.body.tee();
 
     try {
