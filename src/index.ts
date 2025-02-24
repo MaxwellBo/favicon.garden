@@ -59,7 +59,7 @@ export default {
 
     const url = new URL(request.url);
     const path = url.pathname;
-    let target = normalizeUrl(path.slice(1)); // Remove leading slash
+    let target = path.slice(1); // Remove leading slash
     const bucketPath = encodeURIComponent(target);
 
     const object = await env.FAVICON_GARDEN_BUCKET.get(bucketPath);
@@ -82,7 +82,9 @@ export default {
     let favicon: Response;
 
     try {
-      favicon = await this.fetchFavicon(target);
+      // Normalize the target URL
+      const normalizedTarget = normalizeUrl(target);
+      favicon = await this.fetchFavicon(normalizedTarget);
     } catch (e: any) {
       return new Response('Favicon did not download: ' + e.message + "\n" + e.stack, { status: 500 });
     }
@@ -121,71 +123,63 @@ export default {
   },
 
   async fetchFavicon(target: string): Promise<Response> {
-    const faviconUrl = new URL('/favicon.ico', target).href;
-    const faviconResponse = await fetch(faviconUrl, {
-      headers: {
-        'User-Agent': BROWSER_USER_AGENT,
-      }
-    });
-    if (faviconResponse.ok) {
-      if (isIcon(faviconResponse)) {
-        return faviconResponse;
-      } else {
-        console.error(`Favicon.ico from ${target} is not an icon`);
-      }
-    } else {
-      console.error(`Failed to fetch favicon.ico from ${target}: ${faviconResponse.status} ${faviconResponse.statusText}`);
-    }
-
-    const response = await fetch(target, {
-      headers: {
-        'User-Agent': BROWSER_USER_AGENT
-      }
-    });
-    if (!response.ok) {
-      throw new Error(`Failed to fetch HTML page ${target}: ${response.status} ${response.statusText}`);
-    }
-
-    const text = await response.text();
-
-    // Define regex patterns for different link types in order of preference
-
-    // Try each pattern
-    for (const pattern of PATTERNS) {
-      const match = text.match(pattern);
-      if (match && match[1]) {
-        let faviconUrl = match[1];
-    
-        // Normalize URL
-        try {
-          // First try to construct the full URL assuming it's relative
-          try {
-            faviconUrl = new URL(faviconUrl, target).href;
-          } catch {
-            // If that fails, try parsing it as an absolute URL
-            faviconUrl = new URL(faviconUrl).href;
-          }
-    
-          const faviconResponse = await fetch(faviconUrl, {
-            headers: {
-              'User-Agent': BROWSER_USER_AGENT
-            }
-          });
-
-          if (faviconResponse.ok) {
-            if (isIcon(faviconResponse)) {
-              return faviconResponse;
-            } else {
-              throw new Error(`Favicon from ${faviconUrl} is not an icon`);
+    // First try to fetch the page at the exact URL to get its favicon
+    try {
+      const response = await fetch(target, {
+        headers: {
+          'User-Agent': BROWSER_USER_AGENT
+        }
+      });
+      if (response.ok) {
+        const text = await response.text();
+        // Try to find favicon in the HTML first
+        for (const pattern of PATTERNS) {
+          const match = text.match(pattern);
+          if (match && match[1]) {
+            let faviconUrl = match[1];
+            try {
+              // First try to construct the full URL assuming it's relative
+              try {
+                faviconUrl = new URL(faviconUrl, target).href;
+              } catch {
+                // If that fails, try parsing it as an absolute URL
+                faviconUrl = new URL(faviconUrl).href;
+              }
+              const faviconResponse = await fetch(faviconUrl, {
+                headers: {
+                  'User-Agent': BROWSER_USER_AGENT
+                }
+              });
+              if (faviconResponse.ok && isIcon(faviconResponse)) {
+                return faviconResponse;
+              }
+            } catch (e: any) {
+              console.log('Failed to fetch favicon from ' + faviconUrl + ': ' + e.message);
+              continue;
             }
           }
-        } catch (e: any) {
-          console.log('Failed to fetch favicon from ' + faviconUrl + ': ' + e.message);
-          continue;
         }
       }
+    } catch (e: any) {
+      console.log('Failed to fetch page at ' + target + ': ' + e.message);
     }
 
-    throw new Error('Exhausted all Regex patterns and common paths to find favicon');
+    // If we couldn't get a favicon from the exact URL, try the domain's favicon.ico
+    try {
+      const url = new URL(target);
+      const faviconUrl = new URL('/favicon.ico', url.origin).href;
+      const faviconResponse = await fetch(faviconUrl, {
+        headers: {
+          'User-Agent': BROWSER_USER_AGENT,
+        }
+      });
+      if (faviconResponse.ok && isIcon(faviconResponse)) {
+        return faviconResponse;
+      }
+    } catch (e: any) {
+      console.log('Failed to fetch favicon.ico: ' + e.message);
+    }
+
+    throw new Error('Could not find favicon for ' + target);
   }
 }
