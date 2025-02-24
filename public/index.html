@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,31 +10,31 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Schoolbell&family=Princess+Sofia&display=swap" rel="stylesheet">
 
-  <link 
-    rel="stylesheet" 
-    href="https://esm.sh/jsr/@celine/celine@4.1.0/cell.css" />
+  <link rel="stylesheet" href="https://esm.sh/jsr/@celine/celine@4.1.0/cell.css" />
 
 
   <link rel="icon" type="image/png" href="favicon.ico" />
 
   <meta name="author" content="Max Bo">
   <meta name="keywords" content="favicon, API, cache, website icons">
-  <meta name="description" content="favicon.garden is a favicon API and cache. Load the favicon of a website by prepending a URL with https://favicon.garden/">
+  <meta name="description"
+    content="favicon.garden is a favicon API and cache. Load the favicon of a website by prepending a URL with https://favicon.garden/">
 
   <meta property="og:title" content="favicon.garden">
-  <meta property="og:description" content="favicon.garden is a favicon API and cache. Load the favicon of a website by prepending a URL with https://favicon.garden/">
+  <meta property="og:description"
+    content="favicon.garden is a favicon API and cache. Load the favicon of a website by prepending a URL with https://favicon.garden/">
   <meta property="og:image" content="https://favicon.garden/favicon.ico">
   <meta property="og:url" content="https://favicon.garden">
   <meta property="og:type" content="website">
 
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="favicon.garden">
-  <meta name="twitter:description" content="favicon.garden is a favicon API and cache. Load the favicon of a website by prepending a URL with https://favicon.garden/">
+  <meta name="twitter:description"
+    content="favicon.garden is a favicon API and cache. Load the favicon of a website by prepending a URL with https://favicon.garden/">
   <meta name="twitter:image" content="https://favicon.garden/favicon.ico">
 </head>
 
 <style>
-
   code {
     background-color: #5c5a53;
     color: #ebcb58;
@@ -58,7 +59,9 @@
     /* background-color: rgb(100, 93, 87); */
   }
 
-  h1, h2, h3 {
+  h1,
+  h2,
+  h3 {
     color: #e0b517;
   }
 
@@ -101,6 +104,7 @@
   a:link {
     color: #ebcb58;
   }
+
   a:visited {
     color: #d4a017;
   }
@@ -115,8 +119,8 @@
     width: 1.7ch;
     height: 1.71ch;
   }
-  
 </style>
+
 <body>
   <main>
 
@@ -131,8 +135,10 @@
     </center>
 
     <p>
-      favicon.garden is a 
-       <a href="https://developer.mozilla.org/en-US/docs/Glossary/Favicon"><img class='favicon' src="/https://developer.mozilla.org" /> favicon</a> API and cache. It is free, <a href="https://github.com/MaxwellBo/favicon.garden">
+      favicon.garden is a
+      <a href="https://developer.mozilla.org/en-US/docs/Glossary/Favicon"><img class='favicon'
+          src="/https://developer.mozilla.org" /> favicon</a> API and cache. It is free, <a
+        href="https://github.com/MaxwellBo/favicon.garden">
         <img class='favicon' src='/github.com' />
         open-source</a> and <i><b>has no rate limits</b></i>.
     </p>
@@ -141,10 +147,10 @@
       You can load the favicon of a website by prepending the URL with <code>https://favicon.garden/</code>:
     </p>
 
-<code class="echo dark smaller">&lt;img src='https://favicon.garden/google.com' class='favicon' /&gt;</code>
+    <code class="echo dark smaller">&lt;img src='https://favicon.garden/google.com' class='favicon' /&gt;</code>
 
     <p>
-      renders  <img class='favicon' src='https://favicon.garden/google.com' />, 
+      renders <img class='favicon' src='https://favicon.garden/google.com' />,
       where <code>.favicon</code> is defined as
     </p>
 
@@ -176,12 +182,12 @@
     <p>
       favicon.garden was inspired by <a href="https://gwern.net/design#features">
         <img class='favicon' src='gwern.net' /> Gwern's use of link icons</a>,
-        and <a href="https://invertornot.com/">
-          <img class='favicon' src='/invertornot.com' /> InvertOrNot</a>
+      and <a href="https://invertornot.com/">
+        <img class='favicon' src='/invertornot.com' /> InvertOrNot</a>
 
-          (which itself was also <a href="https://gwern.net/idea#invertornot">
-            <img class='favicon' src='/gwern.net' /> 
-            inspired by Gwern</a>).
+      (which itself was also <a href="https://gwern.net/idea#invertornot">
+        <img class='favicon' src='/gwern.net' />
+        inspired by Gwern</a>).
 
       <a href="https://invertornot.com/"></a>
     </p>
@@ -196,16 +202,16 @@
     <h2>Wait, can't I just append <code>/favicon.ico</code> to the domain I want the favicon of?</h2>
 
     <p>
-      Yes, but not all websites have a <code>/favicon.ico</code>, rather using <code>&lt;link rel="icon" href="..."&gt;</code> in their HTML.
-      favicon.garden saves you the busy work of confirming the presence of a <code>/favicon.ico</code>, and if not, tracking down the <code>&lt;link&gt;</code> tag.
+      Well, no. You can if the URL you're interested in getting the favicon for doesn't have a <a
+        href="https://web.dev/articles/url-parts"><img class='favicon' src='/web.dev' /> path or query</a>, but if
+      it does,
+      you're going to have to track down the correct <code>&lt;link rel="icon" href="..."&gt;</code> in the HTML!
+      That's a lot of busy work if you're writing a long article with lots of links!
     </p>
 
     <p>
-      Secondly, hotlinking someone else's asset (even if it's just a tiny icon) is generally poor form.
-    </p>
-
-    <p>
-      Finally, in articles I've written where I've used a lot of favicons, a surprising number of them just flake out and don't load, or load slowly. favicon.garden smooths out these issues.
+      Additionally, in a lot articles I've written where I've used a lot of favicons, a surprising number of them just
+      flake out and don't load, or load slowly. favicon.garden smooths out these issues.
     </p>
 
     <h2>Tester</h2>
@@ -220,23 +226,24 @@
     <div id="result"></div>
 
     <script>
-      document.getElementById('faviconForm').addEventListener('submit', function(event) {
-      event.preventDefault();
-      const url = document.getElementById('urlInput').value;
-      const resultDiv = document.getElementById('result');
-      const newRow = document.createElement('div');
-      newRow.innerHTML = `
+      document.getElementById('faviconForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+        const url = document.getElementById('urlInput').value;
+        const resultDiv = document.getElementById('result');
+        const newRow = document.createElement('div');
+        newRow.innerHTML = `
         <img src="https://favicon.garden/${url}" class="favicon">
         <code>https://favicon.garden/${url}</code>
       `;
-      resultDiv.appendChild(newRow);
+        resultDiv.appendChild(newRow);
       });
 
-      document.getElementById('clearButton').addEventListener('click', function() {
+      document.getElementById('clearButton').addEventListener('click', function () {
         document.getElementById('urlInput').value = '';
       });
     </script>
 
   </main>
 </body>
+
 </html>
