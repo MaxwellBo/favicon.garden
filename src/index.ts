@@ -128,8 +128,10 @@ export default {
       const response = await fetch(target, {
         headers: {
           'User-Agent': BROWSER_USER_AGENT
-        }
+        },
+        redirect: 'follow' // Follow redirects to get the final URL
       });
+
       if (response.ok) {
         const text = await response.text();
         // Try to find favicon in the HTML first
@@ -138,19 +140,30 @@ export default {
           if (match && match[1]) {
             let faviconUrl = match[1];
             try {
-              // First try to construct the full URL assuming it's relative
-              try {
-                faviconUrl = new URL(faviconUrl, target).href;
-              } catch {
-                // If that fails, try parsing it as an absolute URL
-                faviconUrl = new URL(faviconUrl).href;
-              }
-              const faviconResponse = await fetch(faviconUrl, {
+              // Important: Use response.url instead of target to get the final URL after redirects
+              // This ensures relative paths are resolved against the correct base URL
+              const baseUrl = new URL(response.url);
+              const resolvedUrl = new URL(faviconUrl, baseUrl.href);
+              
+              console.log('Resolving favicon URL:', {
+                original: faviconUrl,
+                baseUrl: baseUrl.href,
+                resolved: resolvedUrl.href
+              });
+
+              const faviconResponse = await fetch(resolvedUrl.href, {
                 headers: {
                   'User-Agent': BROWSER_USER_AGENT
                 }
               });
+
               if (faviconResponse.ok && isIcon(faviconResponse)) {
+                // Clone the response before consuming it
+                const clonedResponse = faviconResponse.clone();
+                console.log('Found favicon:', {
+                  url: resolvedUrl.href,
+                  contentType: clonedResponse.headers.get('Content-Type')
+                });
                 return faviconResponse;
               }
             } catch (e: any) {
@@ -168,11 +181,14 @@ export default {
     try {
       const url = new URL(target);
       const faviconUrl = new URL('/favicon.ico', url.origin).href;
+      console.log('Trying fallback favicon.ico:', faviconUrl);
+      
       const faviconResponse = await fetch(faviconUrl, {
         headers: {
           'User-Agent': BROWSER_USER_AGENT,
         }
       });
+      
       if (faviconResponse.ok && isIcon(faviconResponse)) {
         return faviconResponse;
       }

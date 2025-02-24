@@ -56,7 +56,7 @@ describe('favicon.garden service', () => {
 	});
 
 	describe('Path-based favicon fetching', () => {
-		it('fetches favicon for subdirectory paths', async () => {
+		it('fetches favicon for subdirectory paths with relative icon paths', async () => {
 			const response = await SELF.fetch('https://favicon.garden/maxbo.me/html-in-hyde');
 			expect(response.status).toBe(200);
 			expect(response.headers.get('content-type')).toMatch(/^image\//);
@@ -68,8 +68,24 @@ describe('favicon.garden service', () => {
 			const pathFavicon = await response.arrayBuffer();
 			const baseFavicon = await baseDomainResponse.arrayBuffer();
 			
-			expect(Buffer.from(pathFavicon).toString('base64'))
-				.not.toBe(Buffer.from(baseFavicon).toString('base64'));
+			const pathFaviconBase64 = Buffer.from(pathFavicon).toString('base64');
+			const baseFaviconBase64 = Buffer.from(baseFavicon).toString('base64');
+			
+			expect(pathFaviconBase64).not.toBe(baseFaviconBase64);
+			
+			console.log('Path favicon URL:', response.url);
+			console.log('Base favicon URL:', baseDomainResponse.url);
+		});
+
+		it('resolves relative paths correctly in subdirectory favicons', async () => {
+			const response = await SELF.fetch('https://favicon.garden/maxbo.me/html-in-hyde');
+			expect(response.status).toBe(200);
+			expect(response.headers.get('content-type')).toMatch(/^image\//);
+			
+			const favicon = await response.arrayBuffer();
+			const faviconBase64 = Buffer.from(favicon).toString('base64');
+			
+			console.log('Resolved favicon URL for /html-in-hyde page');
 		});
 
 		it('fetches favicon for subdirectory paths with www prefix', async () => {
