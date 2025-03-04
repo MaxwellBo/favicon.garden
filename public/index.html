@@ -202,7 +202,7 @@
     <h2>Wait, can't I just append <code>/favicon.ico</code> to the domain I want the favicon of?</h2>
 
     <p>
-      Well, no. You can if the URL you're interested in getting the favicon for doesn't have a <a
+      Sometimes. You can if the URL you're interested in getting the favicon for doesn't have a <a
         href="https://web.dev/articles/url-parts"><img class='favicon' src='/web.dev' /> path or query</a>, but if
       it does,
       you're going to have to track down the correct <code>&lt;link rel="icon" href="..."&gt;</code> in the HTML!
@@ -211,7 +211,7 @@
 
     <p>
       Additionally, in articles I've written where I've used a lot of favicons, a surprising number of them
-      don't load, or load slowly. favicon.garden smooths out these issues.
+      don't load, or load slowly, because of DNS lookup load. favicon.garden smooths out these issues.
     </p>
 
     <h2>Tester</h2>
