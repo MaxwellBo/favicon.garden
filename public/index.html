@@ -214,6 +214,20 @@
       don't load, or load slowly, because of DNS lookup load. favicon.garden smooths out these issues.
     </p>
 
+		<h2>Wait, can't I just prepend the major <code>gstatic</code> domain?</h2>
+
+		The what?
+
+		Oh, you mean like prefixing <code>https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.google.com&size=64</code> to the URL
+
+		<code class="echo dark smaller">
+			&lt;img src='https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.google.com&size=64' class='favicon' /&gt;
+		</code>
+
+		such that it renders <img class='favicon' src='https://t0.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://www.google.com&size=64' />?
+
+		Oh yeah that works too. I didn't realize that was a thing until I finished this project.
+
     <h2>Tester</h2>
 
     <form id="faviconForm">
